@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Go-Microservice/internal/repo"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"log/slog"
@@ -15,6 +16,7 @@ type config struct {
 	addr string
 	// shutdownTimeout defines the maximum time allowed for graceful shutdown
 	shutdownTimeout time.Duration
+	db              dbConfig
 }
 
 // application holds the dependencies for HTTP handlers, helpers, and middleware.
@@ -22,6 +24,14 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	repo   repo.Repository
+}
+
+type dbConfig struct {
+	addr         string
+	maxOpenConns int
+	maxIdleConns int
+	maxIdleTime  string
 }
 
 // mount configures and returns the HTTP router with all middleware and routes.

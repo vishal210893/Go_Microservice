@@ -1,4 +1,4 @@
-package internal
+package log
 
 import (
 	"context"
@@ -37,7 +37,6 @@ type SpringBootHandler struct {
 	projectRoot string
 }
 
-// NewSpringBootHandler creates a new Spring Boot-style log handler
 func NewFormattedLogHandler(w io.Writer, level slog.Level) *SpringBootHandler {
 	return &SpringBootHandler{
 		writer:      w,
