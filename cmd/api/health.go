@@ -34,7 +34,7 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 
 	if err := writeJSON(w, http.StatusOK, healthResp); err != nil {
 		app.logger.Error("Failed to encode health check response", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Failed to get health check response")
+		app.internalServerError(w, r, err)
 		return
 	}
 

@@ -31,6 +31,10 @@ type UsersRepository interface {
 	Create(ctx context.Context, user *User) error
 }
 
+type CommentsRepository interface {
+	GetByPostID(ctx context.Context, postID int64) ([]Comment, error)
+}
+
 // Repository aggregates all repository interfaces into a single structure.
 // This provides a unified access point for all data operations and simplifies
 // dependency injection in the service layer.
@@ -41,11 +45,9 @@ type UsersRepository interface {
 //	post, err := repo.Posts.GetByID(ctx, 123)
 //	user, err := repo.Users.GetByEmail(ctx, "user@example.com")
 type Repository struct {
-	// Posts provides access to post-related operations
-	Posts PostsRepository
-
-	// Users provides access to user-related operations
-	Users UsersRepository
+	Posts    PostsRepository
+	Users    UsersRepository
+	Comments CommentsRepository
 }
 
 // NewRepository creates a new Repository instance with PostgreSQL implementations.
@@ -77,8 +79,9 @@ func NewPostgresRepo(db *sql.DB) (*Repository, error) {
 	fmt.Println(store)
 
 	return &Repository{
-		Posts: NewPostStore(db),
-		Users: &UserStore{db},
+		Posts:    NewPostStore(db),
+		Users:    &UserStore{db},
+		Comments: &CommentRepo{db},
 	}, nil
 
 }

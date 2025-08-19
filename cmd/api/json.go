@@ -3,9 +3,16 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/go-playground/validator/v10"
 	"log"
 	"net/http"
 )
+
+var validate *validator.Validate
+
+func init() {
+	validate = validator.New(validator.WithRequiredStructEnabled())
+}
 
 // writeJSON writes a JSON response with the given status code and data.
 // It sets the appropriate Content-Type header and encodes the data as JSON.

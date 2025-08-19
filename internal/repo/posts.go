@@ -31,13 +31,14 @@ var (
 // Post represents a blog post entity with metadata and content.
 // It maps to the posts table in the database and includes audit fields.
 type Post struct {
-	ID        int64    `json:"id" db:"id"`
-	Content   string   `json:"content" db:"content"`
-	Title     string   `json:"title" db:"title"`
-	UserID    int64    `json:"user_id" db:"user_id"`
-	Tags      []string `json:"tags" db:"tags"`
-	CreatedAt string   `json:"created_at" db:"created_at"`
-	UpdatedAt string   `json:"updated_at" db:"updated_at"`
+	ID        int64     `json:"id" db:"id"`
+	Content   string    `json:"content" db:"content"`
+	Title     string    `json:"title" db:"title"`
+	UserID    int64     `json:"user_id" db:"user_id"`
+	Tags      []string  `json:"tags" db:"tags"`
+	CreatedAt string    `json:"created_at" db:"created_at"`
+	UpdatedAt string    `json:"updated_at" db:"updated_at"`
+	Comments  []Comment `json:"comments" db:"comments"`
 }
 
 // Validate checks if the post data is valid for database operations
@@ -166,7 +167,7 @@ func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 	//ctx, cancel := context.WithTimeout(ctx, s.queryTimeout)
 	//defer cancel()
 
-	post := &Post{}
+	post := Post{}
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&post.ID,
 		&post.Content,
@@ -184,7 +185,7 @@ func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 		return nil, fmt.Errorf("failed to get post: %w", err)
 	}
 
-	return post, nil
+	return &post, nil
 }
 
 //
