@@ -12,7 +12,6 @@ import (
 	"github.com/lib/pq"
 )
 
-// Query timeout constants
 const (
 	// DefaultQueryTimeout is the default timeout for database queries
 	DefaultQueryTimeout = 15 * time.Second
@@ -21,15 +20,12 @@ const (
 	DefaultTransactionTimeout = 30 * time.Second
 )
 
-// Common repository errors
 var (
 	ErrPostNotFound    = errors.New("post not found")
 	ErrPostExists      = errors.New("post already exists")
 	ErrInvalidPostData = errors.New("invalid post data")
 )
 
-// Post represents a blog post entity with metadata and content.
-// It maps to the posts table in the database and includes audit fields.
 type Post struct {
 	ID        int64     `json:"id" db:"id"`
 	Content   string    `json:"content" db:"content"`
@@ -41,7 +37,6 @@ type Post struct {
 	Comments  []Comment `json:"comments" db:"comments"`
 }
 
-// Validate checks if the post data is valid for database operations
 func (p *Post) Validate() error {
 	if p.Title == "" {
 		return fmt.Errorf("%w: title is required", ErrInvalidPostData)
@@ -55,14 +50,10 @@ func (p *Post) Validate() error {
 	return nil
 }
 
-// PostStore provides database operations for Post entities.
-// It implements the repository pattern for posts table operations.
 type PostStore struct {
 	db *sql.DB
 }
 
-// NewPostStore creates a new PostStore with the provided database connection.
-// It uses default timeout values for database operations.
 func NewPostStore(db *sql.DB) *PostStore {
 	return &PostStore{
 		db: db,
@@ -91,7 +82,7 @@ func NewPostStore(db *sql.DB) *PostStore {
 //	if err != nil {
 //		log.Printf("Failed to create post: %v", err)
 //	}
-func (postStore *PostStore) Create(ctx context.Context, post *Post) error {
+func (repo *PostStore) Create(ctx context.Context, post *Post) error {
 	if post == nil {
 		return fmt.Errorf("%w: post cannot be nil", ErrInvalidPostData)
 	}
@@ -107,10 +98,10 @@ func (postStore *PostStore) Create(ctx context.Context, post *Post) error {
 	`
 
 	// Set query timeout
-	//ctx, cancel := context.WithTimeout(ctx, postStore.queryTimeout)
+	//ctx, cancel := context.WithTimeout(ctx, repo.queryTimeout)
 	//defer cancel()
 
-	err := postStore.db.QueryRowContext(
+	err := repo.db.QueryRowContext(
 		ctx,
 		query,
 		post.Content,
@@ -151,9 +142,7 @@ func (postStore *PostStore) Create(ctx context.Context, post *Post) error {
 	return nil
 }
 
-// GetByID retrieves a post by its ID from the database.
-// Returns ErrPostNotFound if the post doesn't exist.
-func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
+func (repo *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("%w: invalid post ID", ErrInvalidPostData)
 	}
@@ -164,11 +153,11 @@ func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 		WHERE id = $1
 	`
 
-	//ctx, cancel := context.WithTimeout(ctx, s.queryTimeout)
+	//ctx, cancel := context.WithTimeout(ctx, repo.queryTimeout)
 	//defer cancel()
 
 	post := Post{}
-	err := s.db.QueryRowContext(ctx, query, id).Scan(
+	err := repo.db.QueryRowContext(ctx, query, id).Scan(
 		&post.ID,
 		&post.Content,
 		&post.Title,
@@ -188,77 +177,65 @@ func (s *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 	return &post, nil
 }
 
-//
-//// Update modifies an existing post using optimistic locking.
-//// The version field is used to prevent concurrent modification conflicts.
-//func (s *PostStore) Update(ctx context.Context, post *Post) error {
-//	if post == nil {
-//		return fmt.Errorf("%w: post cannot be nil", ErrInvalidPostData)
-//	}
-//
-//	if err := post.Validate(); err != nil {
-//		return fmt.Errorf("validation failed: %w", err)
-//	}
-//
-//	if post.ID <= 0 {
-//		return fmt.Errorf("%w: invalid post ID for update", ErrInvalidPostData)
-//	}
-//
-//	query := `
-//		UPDATE posts
-//		SET content = $1, title = $2, tags = $3, updated_at = CURRENT_TIMESTAMP, version = version + 1
-//		WHERE id = $4 AND version = $5
-//		RETURNING updated_at, version
-//	`
-//
-//	ctx, cancel := context.WithTimeout(ctx, s.queryTimeout)
-//	defer cancel()
-//
-//	err := s.db.QueryRowContext(
-//		ctx,
-//		query,
-//		post.Content,
-//		post.Title,
-//		pq.Array(post.Tags),
-//		post.ID,
-//		post.Version,
-//	).Scan(&post.UpdatedAt, &post.Version)
-//
-//	if err != nil {
-//		if errors.Is(err, sql.ErrNoRows) {
-//			return fmt.Errorf("%w: post may not exist or version conflict", ErrPostNotFound)
-//		}
-//		return fmt.Errorf("failed to update post: %w", err)
-//	}
-//
-//	return nil
-//}
-//
-//// Delete removes a post from the database by ID.
-//// Returns ErrPostNotFound if the post doesn't exist.
-//func (s *PostStore) Delete(ctx context.Context, id int64) error {
-//	if id <= 0 {
-//		return fmt.Errorf("%w: invalid post ID", ErrInvalidPostData)
-//	}
-//
-//	query := `DELETE FROM posts WHERE id = $1`
-//
-//	ctx, cancel := context.WithTimeout(ctx, s.queryTimeout)
-//	defer cancel()
-//
-//	result, err := s.db.ExecContext(ctx, query, id)
-//	if err != nil {
-//		return fmt.Errorf("failed to delete post: %w", err)
-//	}
-//
-//	rowsAffected, err := result.RowsAffected()
-//	if err != nil {
-//		return fmt.Errorf("failed to get rows affected: %w", err)
-//	}
-//
-//	if rowsAffected == 0 {
-//		return fmt.Errorf("%w: post with ID %d", ErrPostNotFound, id)
-//	}
-//
-//	return nil
-//}
+func (repo *PostStore) Update(ctx context.Context, post *Post) error {
+	if post == nil {
+		return fmt.Errorf("%w: post cannot be nil", ErrInvalidPostData)
+	}
+
+	if err := post.Validate(); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	if post.ID <= 0 {
+		return fmt.Errorf("%w: invalid post ID for update", ErrInvalidPostData)
+	}
+
+	query := `
+		UPDATE posts
+		SET title = $1, content = $2, tags = $3, updated_at = NOW()
+		WHERE id = $4
+		RETURNING updated_at
+	`
+
+	err := repo.db.QueryRowContext(
+		ctx,
+		query,
+		post.Title,
+		post.Content,
+		pq.Array(post.Tags),
+		post.ID,
+	).Scan(&post.UpdatedAt)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("%w: post may not exist or version conflict", ErrPostNotFound)
+		}
+		return fmt.Errorf("failed to update post: %w", err)
+	}
+
+	return nil
+}
+
+func (repo *PostStore) Delete(ctx context.Context, id int64) error {
+	if id <= 0 {
+		return fmt.Errorf("%w: invalid post ID", ErrInvalidPostData)
+	}
+
+	query := `DELETE FROM posts WHERE id = $1`
+
+	result, err := repo.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete post: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("%w: post with ID %d", ErrPostNotFound, id)
+	}
+
+	return nil
+}

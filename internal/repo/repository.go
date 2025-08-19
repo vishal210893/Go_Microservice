@@ -12,11 +12,8 @@ import (
 
 // Common repository errors
 var (
-	// ErrRepositoryNotInitialized is returned when repository is not properly initialized
 	ErrRepositoryNotInitialized = errors.New("repository not initialized")
-
-	// ErrInvalidInput is returned when invalid input is provided to repository methods
-	ErrInvalidInput = errors.New("invalid input provided")
+	ErrInvalidInput             = errors.New("invalid input provided")
 )
 
 // PostsRepository defines the contract for post-related database operations.
@@ -25,6 +22,8 @@ var (
 type PostsRepository interface {
 	Create(ctx context.Context, post *Post) error
 	GetByID(ctx context.Context, id int64) (*Post, error)
+	Delete(ctx context.Context, id int64) error
+	Update(ctx context.Context, post *Post) error
 }
 
 type UsersRepository interface {
