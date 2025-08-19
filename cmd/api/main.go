@@ -1,10 +1,14 @@
 package main
 
 import (
-	"Go-Microservice/internal"
+	"Go-Microservice/internal/db"
 	"Go-Microservice/internal/env"
+	formatLog "Go-Microservice/internal/log"
+	"Go-Microservice/internal/repo"
 	"context"
+	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,19 +27,41 @@ const (
 // graceful shutdown capabilities for production deployment.
 func main() {
 
-	logger := slog.New(internal.NewFormattedLogHandler(os.Stdout, slog.LevelInfo))
+	logger := slog.New(formatLog.NewFormattedLogHandler(os.Stdout, slog.LevelInfo))
 	slog.SetDefault(logger)
 
-	app := &application{
-		config: config{
-			addr:            env.GetPort("ADDR", DefaultAddr),
-			shutdownTimeout: DefaultServerTimeout,
+	config := config{
+		addr:            env.GetPort("ADDR", DefaultAddr),
+		shutdownTimeout: DefaultServerTimeout,
+		db: dbConfig{
+			addr:         env.GetString("DB_ADDR", "postgres://avnadmin:AVNS_LT5DsEKUPKfrHSHZHyB@pg-1d9d15dc-vishal210893-5985.h.aivencloud.com:28832/defaultdb?sslmode=require"),
+			maxOpenConns: env.GetInt("DB_MAX_OPEN_CONNS", 30),
+			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
+			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
 		},
+	}
+
+	db, err := db.New(
+		config.db.addr,
+		config.db.maxOpenConns,
+		config.db.maxIdleConns,
+		config.db.maxIdleTime)
+	if err != nil {
+		logger.Error("Failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+	log.Println("Connected to database!")
+
+	postgresRepo, _ := repo.NewPostgresRepo(db)
+
+	app := &application{
+		config: config,
 		logger: logger,
+		repo:   *postgresRepo,
 	}
 
 	router := app.mount()
-
 	if err := app.runWithGracefulShutdown(router); err != nil {
 		logger.Error("Failed to start application", "error", err)
 		os.Exit(1)
@@ -103,4 +129,26 @@ func (app *application) handleGracefulShutdown(srv *http.Server, done chan<- str
 
 	// Signal shutdown completion
 	close(done)
+}
+
+// getLocalIP returns the first non-loopback IPv4 address of the local machine.
+// This is used for debugging and logging purposes to identify which instance
+// is serving requests in multi-instance deployments.
+func (app *application) getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		app.logger.Warn("Failed to get local IP addresses", "error", err)
+		return "unknown"
+	}
+
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+
+	app.logger.Warn("No non-loopback IPv4 address found")
+	return "unknown"
 }

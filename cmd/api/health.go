@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 )
@@ -33,9 +32,9 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(healthResp); err != nil {
+	if err := writeJSON(w, http.StatusOK, healthResp); err != nil {
 		app.logger.Error("Failed to encode health check response", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to get health check response")
 		return
 	}
 

@@ -5,10 +5,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"log/slog"
-	"net"
 	"net/http"
 	"time"
 )
+
+type dbConfig struct {
+	addr         string
+	maxOpenConns int
+	maxIdleConns int
+	maxIdleTime  string
+}
 
 // config holds all configuration parameters for the application
 type config struct {
@@ -25,13 +31,6 @@ type application struct {
 	config config
 	logger *slog.Logger
 	repo   repo.Repository
-}
-
-type dbConfig struct {
-	addr         string
-	maxOpenConns int
-	maxIdleConns int
-	maxIdleTime  string
 }
 
 // mount configures and returns the HTTP router with all middleware and routes.
@@ -52,29 +51,15 @@ func (app *application) mount() http.Handler {
 	r.Route("/v1", func(r chi.Router) {
 		// Health check endpoints
 		r.Get("/health", app.healthcheckHandler)
+
+		r.Route("/posts", func(r chi.Router) {
+			r.Post("/", app.createPostHandler)
+
+			r.Route("/{postID}", func(r chi.Router) {
+				r.Get("/", app.getPostHandler)
+			})
+		})
 	})
 
 	return r
-}
-
-// getLocalIP returns the first non-loopback IPv4 address of the local machine.
-// This is used for debugging and logging purposes to identify which instance
-// is serving requests in multi-instance deployments.
-func (app *application) getLocalIP() string {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		app.logger.Warn("Failed to get local IP addresses", "error", err)
-		return "unknown"
-	}
-
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-
-	app.logger.Warn("No non-loopback IPv4 address found")
-	return "unknown"
 }
