@@ -26,6 +26,7 @@ type Post struct {
 	UpdatedAt string    `json:"updated_at" db:"updated_at"`
 	Version   int32     `json:"-" db:"version"`
 	Comments  []Comment `json:"comments" db:"comments"`
+	User      User      `json:"user" db:"user"`
 }
 
 func (p *Post) Validate() error {
@@ -43,6 +44,11 @@ func (p *Post) Validate() error {
 
 type PostStore struct {
 	db *sql.DB
+}
+
+type PostWithMetadata struct {
+	Post
+	CommentsCount int `json:"comments_count"`
 }
 
 // Create inserts a new post into the database.
@@ -67,7 +73,7 @@ type PostStore struct {
 //	if err != nil {
 //		log.Printf("Failed to create post: %v", err)
 //	}
-func (repo *PostStore) Create(ctx context.Context, post *Post) error {
+func (postStore *PostStore) Create(ctx context.Context, post *Post) error {
 	if post == nil {
 		return fmt.Errorf("%w: post cannot be nil", ErrInvalidPostData)
 	}
@@ -85,7 +91,7 @@ func (repo *PostStore) Create(ctx context.Context, post *Post) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
 	defer cancel()
 
-	err := repo.db.QueryRowContext(
+	err := postStore.db.QueryRowContext(
 		ctx,
 		query,
 		post.Content,
@@ -126,7 +132,7 @@ func (repo *PostStore) Create(ctx context.Context, post *Post) error {
 	return nil
 }
 
-func (repo *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
+func (postStore *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("%w: invalid post ID", ErrInvalidPostData)
 	}
@@ -141,7 +147,7 @@ func (repo *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 	defer cancel()
 
 	post := Post{}
-	err := repo.db.QueryRowContext(ctx, query, id).Scan(
+	err := postStore.db.QueryRowContext(ctx, query, id).Scan(
 		&post.ID,
 		&post.Content,
 		&post.Title,
@@ -162,7 +168,7 @@ func (repo *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 	return &post, nil
 }
 
-func (repo *PostStore) Update(ctx context.Context, post *Post) error {
+func (postStore *PostStore) Update(ctx context.Context, post *Post) error {
 	if post == nil {
 		return fmt.Errorf("%w: post cannot be nil", ErrInvalidPostData)
 	}
@@ -182,7 +188,7 @@ func (repo *PostStore) Update(ctx context.Context, post *Post) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
 	defer cancel()
 
-	err := repo.db.QueryRowContext(
+	err := postStore.db.QueryRowContext(
 		ctx,
 		query,
 		post.Title,
@@ -201,7 +207,7 @@ func (repo *PostStore) Update(ctx context.Context, post *Post) error {
 	return nil
 }
 
-func (repo *PostStore) Delete(ctx context.Context, id int64) error {
+func (postStore *PostStore) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return fmt.Errorf("%w: invalid post ID", ErrInvalidPostData)
 	}
@@ -211,7 +217,7 @@ func (repo *PostStore) Delete(ctx context.Context, id int64) error {
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
 	defer cancel()
 
-	result, err := repo.db.ExecContext(ctx, query, id)
+	result, err := postStore.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete post: %w", err)
 	}
@@ -226,4 +232,51 @@ func (repo *PostStore) Delete(ctx context.Context, id int64) error {
 	}
 
 	return nil
+}
+
+func (postStore *PostStore) GetUserFeed(ctx context.Context, userID int64) ([]PostWithMetadata, error) {
+	query := `
+		SELECT 
+			p.id, p.user_id, p.title, p.content, p.created_at, p.version, p.tags,
+			u.username,
+			COUNT(c.id) AS comments_count
+		FROM posts p
+		LEFT JOIN comments c ON c.post_id = p.id
+		LEFT JOIN users u ON p.user_id = u.id
+		JOIN followers f ON f.follower_id = p.user_id OR p.user_id = $1
+		WHERE f.user_id = $1 OR p.user_id = $1 
+		GROUP BY p.id, u.username,p.created_at
+		ORDER BY p.created_at DESC
+		`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
+
+	rows, err := postStore.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var feed []PostWithMetadata
+	for rows.Next() {
+		var p PostWithMetadata
+		err := rows.Scan(
+			&p.ID,
+			&p.UserID,
+			&p.Title,
+			&p.Content,
+			&p.CreatedAt,
+			&p.Version,
+			pq.Array(&p.Tags),
+			&p.User.Username,
+			&p.CommentsCount,
+		)
+		if err != nil {
+			return nil, err
+		}
+		feed = append(feed, p)
+	}
+	return feed, nil
 }
