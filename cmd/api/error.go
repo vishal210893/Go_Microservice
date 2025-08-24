@@ -27,3 +27,8 @@ func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request,
 	log.Printf("404 %s %s: %v", r.Method, r.URL.Path, err)
 	_ = writeJSONError(w, http.StatusNotFound, "Not Found")
 }
+
+func (app *application) conflictResponse(w http.ResponseWriter, r *http.Request, err error) {
+	log.Printf("409 %s %s: %v", r.Method, r.URL.Path, err)
+	_ = writeJSONError(w, http.StatusConflict, err.Error())
+}

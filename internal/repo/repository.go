@@ -16,6 +16,7 @@ var (
 	ErrRepositoryNotInitialized = errors.New("repository not initialized")
 	ErrInvalidInput             = errors.New("invalid input provided")
 	QueryTimeout                = 15 * time.Second
+	ErrConflict                 = errors.New("conflict error")
 )
 
 // PostsRepository defines the contract for post-related database operations.
@@ -30,11 +31,17 @@ type PostsRepository interface {
 
 type UsersRepository interface {
 	Create(ctx context.Context, user *User) error
+	GetByID(ctx context.Context, id int64) (*User, error)
 }
 
 type CommentsRepository interface {
 	GetByPostID(ctx context.Context, postID int64) ([]Comment, error)
 	Create(ctx context.Context, comment *Comment) error
+}
+
+type FollowersRepository interface {
+	Follow(ctx context.Context, userID, followerID int64) error
+	Unfollow(ctx context.Context, userID, followerID int64) error
 }
 
 // Repository aggregates all repository interfaces into a single structure.
@@ -47,9 +54,10 @@ type CommentsRepository interface {
 //	post, err := repo.Posts.GetByID(ctx, 123)
 //	user, err := repo.Users.GetByEmail(ctx, "user@example.com")
 type Repository struct {
-	Posts    PostsRepository
-	Users    UsersRepository
-	Comments CommentsRepository
+	Posts     PostsRepository
+	Users     UsersRepository
+	Comments  CommentsRepository
+	Followers FollowersRepository
 }
 
 // NewRepository creates a new Repository instance with PostgreSQL implementations.
@@ -79,9 +87,10 @@ func NewPostgresRepo(db *sql.DB) (*Repository, error) {
 	}
 
 	return &Repository{
-		Posts:    &PostStore{db},
-		Users:    &UserStore{db},
-		Comments: &CommentRepo{db},
+		Posts:     &PostStore{db},
+		Users:     &UserStore{db},
+		Comments:  &CommentRepo{db},
+		Followers: &FollowerRepo{db},
 	}, nil
 
 }
