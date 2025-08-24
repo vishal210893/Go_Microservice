@@ -17,6 +17,7 @@ type CreatePostPayload struct {
 	Title   string   `json:"title" validate:"required,min=3,max=100"`
 	Content string   `json:"content" validate:"required,max=100"`
 	Tags    []string `json:"tags"`
+	UserID  int64    `json:"userId" validate:"required"`
 }
 
 func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +37,7 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 		Title:   payload.Title,
 		Content: payload.Content,
 		Tags:    payload.Tags,
-		UserID:  1,
+		UserID:  payload.UserID,
 	}
 
 	ctx := r.Context()

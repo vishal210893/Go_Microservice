@@ -15,7 +15,7 @@ import (
 var (
 	ErrRepositoryNotInitialized = errors.New("repository not initialized")
 	ErrInvalidInput             = errors.New("invalid input provided")
-	QueryTimeout = 15 * time.Second
+	QueryTimeout                = 15 * time.Second
 )
 
 // PostsRepository defines the contract for post-related database operations.
@@ -34,6 +34,7 @@ type UsersRepository interface {
 
 type CommentsRepository interface {
 	GetByPostID(ctx context.Context, postID int64) ([]Comment, error)
+	Create(ctx context.Context, comment *Comment) error
 }
 
 // Repository aggregates all repository interfaces into a single structure.
@@ -78,7 +79,7 @@ func NewPostgresRepo(db *sql.DB) (*Repository, error) {
 	}
 
 	return &Repository{
-		Posts: &PostStore{db},
+		Posts:    &PostStore{db},
 		Users:    &UserStore{db},
 		Comments: &CommentRepo{db},
 	}, nil
