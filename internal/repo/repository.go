@@ -8,12 +8,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // Common repository errors
 var (
 	ErrRepositoryNotInitialized = errors.New("repository not initialized")
 	ErrInvalidInput             = errors.New("invalid input provided")
+	QueryTimeout = 15 * time.Second
 )
 
 // PostsRepository defines the contract for post-related database operations.
@@ -71,14 +73,12 @@ func NewPostgresRepo(db *sql.DB) (*Repository, error) {
 	if db == nil {
 		return nil, errors.New("database connection cannot be nil")
 	}
-
-	var store UsersRepository
-	store = &UserStore{db}
-
-	fmt.Println(store)
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
 
 	return &Repository{
-		Posts:    NewPostStore(db),
+		Posts: &PostStore{db},
 		Users:    &UserStore{db},
 		Comments: &CommentRepo{db},
 	}, nil

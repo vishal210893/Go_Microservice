@@ -7,17 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/lib/pq"
-)
-
-const (
-	// DefaultQueryTimeout is the default timeout for database queries
-	DefaultQueryTimeout = 15 * time.Second
-
-	// DefaultTransactionTimeout is the default timeout for database transactions
-	DefaultTransactionTimeout = 30 * time.Second
 )
 
 var (
@@ -34,6 +24,7 @@ type Post struct {
 	Tags      []string  `json:"tags" db:"tags"`
 	CreatedAt string    `json:"created_at" db:"created_at"`
 	UpdatedAt string    `json:"updated_at" db:"updated_at"`
+	Version   int32     `json:"-" db:"version"`
 	Comments  []Comment `json:"comments" db:"comments"`
 }
 
@@ -52,12 +43,6 @@ func (p *Post) Validate() error {
 
 type PostStore struct {
 	db *sql.DB
-}
-
-func NewPostStore(db *sql.DB) *PostStore {
-	return &PostStore{
-		db: db,
-	}
 }
 
 // Create inserts a new post into the database.
@@ -97,9 +82,8 @@ func (repo *PostStore) Create(ctx context.Context, post *Post) error {
 		RETURNING id, created_at, updated_at
 	`
 
-	// Set query timeout
-	//ctx, cancel := context.WithTimeout(ctx, repo.queryTimeout)
-	//defer cancel()
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
 
 	err := repo.db.QueryRowContext(
 		ctx,
@@ -148,13 +132,13 @@ func (repo *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 	}
 
 	query := `
-		SELECT id, content, title, user_id, tags, created_at, updated_at
+		SELECT id, content, title, user_id, tags, created_at, updated_at, version
 		FROM posts
 		WHERE id = $1
 	`
 
-	//ctx, cancel := context.WithTimeout(ctx, repo.queryTimeout)
-	//defer cancel()
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
 
 	post := Post{}
 	err := repo.db.QueryRowContext(ctx, query, id).Scan(
@@ -165,6 +149,7 @@ func (repo *PostStore) GetByID(ctx context.Context, id int64) (*Post, error) {
 		pq.Array(&post.Tags),
 		&post.CreatedAt,
 		&post.UpdatedAt,
+		&post.Version,
 	)
 
 	if err != nil {
@@ -181,21 +166,21 @@ func (repo *PostStore) Update(ctx context.Context, post *Post) error {
 	if post == nil {
 		return fmt.Errorf("%w: post cannot be nil", ErrInvalidPostData)
 	}
-
 	if err := post.Validate(); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
-
 	if post.ID <= 0 {
 		return fmt.Errorf("%w: invalid post ID for update", ErrInvalidPostData)
 	}
 
 	query := `
 		UPDATE posts
-		SET title = $1, content = $2, tags = $3, updated_at = NOW()
-		WHERE id = $4
-		RETURNING updated_at
+		SET title = $1, content = $2, tags = $3, updated_at = NOW(), version = version + 1
+		WHERE id = $4 AND version = $5
+		RETURNING version
 	`
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
 
 	err := repo.db.QueryRowContext(
 		ctx,
@@ -204,7 +189,8 @@ func (repo *PostStore) Update(ctx context.Context, post *Post) error {
 		post.Content,
 		pq.Array(post.Tags),
 		post.ID,
-	).Scan(&post.UpdatedAt)
+		post.Version,
+	).Scan(&post.Version)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -212,7 +198,6 @@ func (repo *PostStore) Update(ctx context.Context, post *Post) error {
 		}
 		return fmt.Errorf("failed to update post: %w", err)
 	}
-
 	return nil
 }
 
@@ -222,6 +207,9 @@ func (repo *PostStore) Delete(ctx context.Context, id int64) error {
 	}
 
 	query := `DELETE FROM posts WHERE id = $1`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
 
 	result, err := repo.db.ExecContext(ctx, query, id)
 	if err != nil {
