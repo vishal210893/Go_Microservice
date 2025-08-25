@@ -3,9 +3,10 @@ package main
 import (
 	"Go-Microservice/internal/repo"
 	"context"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type userKey string
@@ -21,6 +22,19 @@ type FollowedUser struct {
 	FollowerId int64 `json:"followerId"`
 }
 
+// GetUser retrieves a specific user by their ID
+//
+//	@Summary		Get user by ID
+//	@Description	Retrieve detailed information about a specific user including their profile data
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			userID	path		int64				true	"User ID to retrieve"
+//	@Success		200		{object}	repo.User			"User details retrieved successfully"
+//	@Failure		400		{object}	map[string]string	"Invalid user ID format"
+//	@Failure		404		{object}	map[string]string	"User not found"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Router			/v1/users/{userID} [get]
 func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r)
 	if err := app.jsonResponse(w, http.StatusOK, user); err != nil {
@@ -28,6 +42,22 @@ func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// FollowUser allows the current user to follow another user
+//
+//	@Summary		Follow a user
+//	@Description	Create a following relationship between the authenticated user and the target user
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			userID	path		int64				true	"ID of the user to follow"
+//	@Success		200		{object}	map[string]string	"Successfully followed user"
+//	@Success		201		{object}	map[string]string	"Following relationship created"
+//	@Failure		400		{object}	map[string]string	"Invalid user ID or cannot follow yourself"
+//	@Failure		404		{object}	map[string]string	"User not found"
+//	@Failure		409		{object}	map[string]string	"Already following this user"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Security		BasicAuth
+//	@Router			/v1/users/{userID}/follow [put]
 func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request) {
 	followerUser := getUserFromContext(r)
 
@@ -53,6 +83,21 @@ func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// UnfollowUser allows the current user to unfollow another user
+//
+//	@Summary		Unfollow a user
+//	@Description	Remove the following relationship between the authenticated user and the target user
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			userID	path		int64				true	"ID of the user to unfollow"
+//	@Success		200		{object}	map[string]string	"Successfully unfollowed user"
+//	@Success		204		{object}	map[string]string	"Following relationship removed"
+//	@Failure		400		{object}	map[string]string	"Invalid user ID or cannot unfollow yourself"
+//	@Failure		404		{object}	map[string]string	"User not found or not following"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Security		BasicAuth
+//	@Router			/v1/users/{userID}/unfollow [put]
 func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	unFollowingUser := getUserFromContext(r)
 

@@ -5,13 +5,41 @@ import (
 	"time"
 )
 
+// HealthResponse represents the health check response structure
+//
+//	@Description	Health status information for the microservice
 type HealthResponse struct {
-	Status    string    `json:"status"`
-	Message   string    `json:"message"`
-	Timestamp time.Time `json:"timestamp"`
-	Version   string    `json:"version,omitempty"`
+	// Current operational status of the service
+	//	@example	"healthy"
+	Status string `json:"status" example:"healthy"`
+
+	// Descriptive message about the service state
+	//	@example	"Service is operational"
+	Message string `json:"message" example:"Service is operational"`
+
+	// UTC timestamp when the health check was performed
+	//	@example	"2024-01-15T10:30:00.123Z"
+	Timestamp time.Time `json:"timestamp" example:"2024-01-15T10:30:00.123Z"`
+
+	// Service version information (optional)
+	//	@example	"1.0.0"
+	Version string `json:"version,omitempty" example:"1.0.0"`
 }
 
+// HealthCheck returns the current health status of the service
+//
+//	@Summary		Get service health status
+//	@Description	Returns comprehensive health information about the microservice including operational status,
+//	@Description	system timestamp, and version details. This endpoint is used for monitoring and load balancer health checks.
+//	@Description	Always returns 200 OK when the service is running and can process requests.
+//	@Tags			health
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	HealthResponse		"Service is healthy and operational"
+//	@Failure		500	{object}	map[string]string	"Internal server error - service may be unhealthy"
+//	@Router			/v1/health [get]
+//	@x-order		1
+//
 // healthcheckHandler handles GET /v1/health requests and returns the service health status.
 // It follows industry standards for health check endpoints by returning structured JSON
 // with proper HTTP status codes and consistent response format.

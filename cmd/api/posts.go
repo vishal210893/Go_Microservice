@@ -4,9 +4,10 @@ import (
 	"Go-Microservice/internal/repo"
 	"context"
 	"errors"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type post string
@@ -20,6 +21,20 @@ type CreatePostPayload struct {
 	UserID  int64    `json:"userId" validate:"required"`
 }
 
+// CreatePost creates a new post with the provided content
+//
+//	@Summary		Create a new post
+//	@Description	Create a new post with title, content, tags, and associate it with a user
+//	@Description	All fields are validated before creation. Title must be between 3-100 characters.
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			post	body		CreatePostPayload	true	"Post creation payload"
+//	@Success		201		{object}	repo.Post			"Post created successfully"
+//	@Failure		400		{object}	map[string]string	"Invalid request payload or validation error"
+//	@Failure		422		{object}	map[string]string	"Validation failed for post data"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Router			/v1/posts [post]
 func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request) {
 	var payload CreatePostPayload
 
@@ -52,6 +67,20 @@ func (app *application) createPostHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// GetPost retrieves a specific post by ID with all comments
+//
+//	@Summary		Get post by ID
+//	@Description	Retrieve detailed information about a specific post including all associated comments
+//	@Description	Returns the complete post object with nested comments and user information
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			postID	path		int64				true	"Post ID to retrieve"
+//	@Success		200		{object}	repo.Post			"Post details with comments retrieved successfully"
+//	@Failure		400		{object}	map[string]string	"Invalid post ID format"
+//	@Failure		404		{object}	map[string]string	"Post not found"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Router			/v1/posts/{postID} [get]
 func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 	post := getPostFromCtx(r)
 
@@ -68,6 +97,20 @@ func (app *application) getPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeletePost removes a post from the system
+//
+//	@Summary		Delete a post
+//	@Description	Permanently delete a post and all associated data including comments
+//	@Description	This action cannot be undone. Only the post owner can delete their posts.
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			postID	path	int64	true	"Post ID to delete"
+//	@Success		204		"Post deleted successfully (no content returned)"
+//	@Failure		400		{object}	map[string]string	"Invalid post ID format"
+//	@Failure		404		{object}	map[string]string	"Post not found"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Router			/v1/posts/{postID} [delete]
 func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request) {
 	idParam := chi.URLParam(r, "postID")
 	id, err := strconv.ParseInt(idParam, 10, 64)
@@ -98,6 +141,20 @@ type UpdatePostPayload struct {
 	Tags    []string `json:"tags"`
 }
 
+// DeletePost removes a post from the system
+//
+//	@Summary		Delete a post
+//	@Description	Permanently delete a post and all associated data including comments
+//	@Description	This action cannot be undone. Only the post owner can delete their posts.
+//	@Tags			posts
+//	@Accept			json
+//	@Produce		json
+//	@Param			postID	path	int64	true	"Post ID to delete"
+//	@Success		204		"Post deleted successfully (no content returned)"
+//	@Failure		400		{object}	map[string]string	"Invalid post ID format"
+//	@Failure		404		{object}	map[string]string	"Post not found"
+//	@Failure		500		{object}	map[string]string	"Internal server error"
+//	@Router			/v1/posts/{postID} [delete]
 func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request) {
 	post := getPostFromCtx(r)
 

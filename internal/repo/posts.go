@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/lib/pq"
 )
 
@@ -16,17 +17,44 @@ var (
 	ErrInvalidPostData = errors.New("invalid post data")
 )
 
+// Post represents a blog post in the system
+//
+//	@Description	Post content with metadata and associated comments
 type Post struct {
-	ID        int64     `json:"id" db:"id"`
-	Content   string    `json:"content" db:"content"`
-	Title     string    `json:"title" db:"title"`
-	UserID    int64     `json:"user_id" db:"user_id"`
-	Tags      []string  `json:"tags" db:"tags"`
-	CreatedAt string    `json:"created_at" db:"created_at"`
-	UpdatedAt string    `json:"updated_at" db:"updated_at"`
-	Version   int32     `json:"-" db:"version"`
-	Comments  []Comment `json:"comments" db:"comments"`
-	User      User      `json:"user" db:"user"`
+	// Post's unique identifier
+	//	@example	1
+	ID int64 `json:"id" example:"1"`
+
+	// Post title
+	//	@example	"My First Blog Post"
+	Title string `json:"title" example:"My First Blog Post"`
+
+	// Post content/body
+	//	@example	"This is the content of my first blog post..."
+	Content string `json:"content" example:"This is the content of my first blog post..."`
+
+	// Associated tags for categorization
+	//	@example	["golang","programming","tutorial"]
+	Tags []string `json:"tags" example:"golang,programming,tutorial"`
+
+	// ID of the user who created the post
+	//	@example	1
+	UserID int64 `json:"user_id" example:"1"`
+
+	// List of comments on this post
+	Comments []Comment `json:"comments"`
+
+	// Timestamp when the post was created
+	//	@example	2024-01-15T10:30:00Z
+	CreatedAt string `json:"created_at" example:"2024-01-15T10:30:00Z"`
+
+	// Timestamp when the post was last updated
+	//	@example	2024-01-15T14:30:00Z
+	UpdatedAt string `json:"updated_at" example:"2024-01-15T14:30:00Z"`
+
+	Version int32 `json:"-" db:"version"`
+
+	User User `json:"user" db:"user"`
 }
 
 func (p *Post) Validate() error {

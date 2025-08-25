@@ -2,11 +2,14 @@ package main
 
 import (
 	"Go-Microservice/internal/repo"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type dbConfig struct {
@@ -23,6 +26,7 @@ type config struct {
 	// shutdownTimeout defines the maximum time allowed for graceful shutdown
 	shutdownTimeout time.Duration
 	db              dbConfig
+	apiUrl          string
 }
 
 // application holds the dependencies for HTTP handlers, helpers, and middleware.
@@ -51,6 +55,9 @@ func (app *application) mount() http.Handler {
 	r.Route("/v1", func(r chi.Router) {
 		// Health check endpoints
 		r.Get("/health", app.healthcheckHandler)
+
+		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
+		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
 		r.Route("/posts", func(r chi.Router) {
 			r.Post("/", app.createPostHandler)

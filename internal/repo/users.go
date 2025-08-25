@@ -9,12 +9,28 @@ type UserStore struct {
 	db *sql.DB
 }
 
+// User represents a user in the system
+//
+//	@Description	User account information
 type User struct {
-	ID        int64  `json:"id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Password  string `json:"-"`
-	CreatedAt string `json:"created_at"`
+	// User's unique identifier
+	//	@example	1
+	ID int64 `json:"id" example:"1"`
+
+	// User's unique username
+	//	@example	john_doe
+	Username string `json:"username" example:"john_doe"`
+
+	// User's email address
+	//	@example	john.doe@example.com
+	Email string `json:"email" example:"john.doe@example.com"`
+
+	// User's password (never returned in responses)
+	Password string `json:"-"`
+
+	// Timestamp when the user account was created
+	//	@example	2024-01-15T10:30:00Z
+	CreatedAt string `json:"created_at" example:"2024-01-15T10:30:00Z"`
 }
 
 func (s *UserStore) Create(ctx context.Context, user *User) error {

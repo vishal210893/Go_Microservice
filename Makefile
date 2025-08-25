@@ -3,7 +3,7 @@ MIGRATIONS_PATH = ./cmd/migrate/migrations
 DATABASE_URL = postgres://avnadmin:AVNS_LT5DsEKUPKfrHSHZHyB@pg-1d9d15dc-vishal210893-5985.h.aivencloud.com:28832/defaultdb?sslmode=require
 
 # Migration commands
-.PHONY: migrate-create-users migrate-create-posts migrate-up migrate-down migrate-force migrate-version seed
+.PHONY: migrate-create-users migrate-create-posts migrate-up migrate-down migrate-force migrate-version seed gen-docs
 
 migrate-create-users:
 	migrate create -seq -ext sql -dir $(MIGRATIONS_PATH) create_users
@@ -29,6 +29,9 @@ migrate-create:
 
 seed:
 	go run cmd/migrate/seed/main.go
+
+gen-docs:
+	@swag init -g ./api/main.go -d cmd,internal && swag fmt
 
 # Help command
 help:

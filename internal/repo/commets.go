@@ -5,13 +5,31 @@ import (
 	"database/sql"
 )
 
+// Comment represents a comment on a post
+//
+//	@Description	User comment on a specific post
 type Comment struct {
-	ID        int64  `json:"id"`
-	PostID    int64  `json:"post_id"`
-	UserID    int64  `json:"user_id"`
-	Content   string `json:"content"`
-	CreatedAt string `json:"created_at"`
-	User      User   `json:"user"`
+	// Comment's unique identifier
+	//	@example	1
+	ID int64 `json:"id" example:"1"`
+
+	// Comment content
+	//	@example	"Great post! Thanks for sharing."
+	Content string `json:"content" example:"Great post! Thanks for sharing."`
+
+	// ID of the post this comment belongs to
+	//	@example	1
+	PostID int64 `json:"post_id" example:"1"`
+
+	// ID of the user who created the comment
+	//	@example	2
+	UserID int64 `json:"user_id" example:"2"`
+
+	// Timestamp when the comment was created
+	//	@example	2024-01-15T11:30:00Z
+	CreatedAt string `json:"created_at" example:"2024-01-15T11:30:00Z"`
+
+	User User `json:"user"`
 }
 
 type CommentRepo struct {

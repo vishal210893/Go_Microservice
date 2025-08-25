@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Go-Microservice/docs"
 	"Go-Microservice/internal/db"
 	"Go-Microservice/internal/env"
 	formatLog "Go-Microservice/internal/log"
@@ -25,6 +26,41 @@ const (
 // main is the application entry point that initializes the server configuration,
 // sets up structured logging, mounts routes, and starts the HTTP server with
 // graceful shutdown capabilities for production deployment.
+
+// @title						Go Microservice API
+// @version					1.0
+// @description				A production-ready Go microservice with posts, users, and social features
+// @description				This API provides endpoints for managing posts, users, comments, and social interactions
+// @description				including user following/unfollowing and personalized feeds.
+//
+// @contact.name				API Support
+// @contact.email				support@example.com
+//
+// @license.name				MIT
+// @license.url				https://opensource.org/licenses/MIT
+//
+// @host						localhost:8080
+// @BasePath					/v1
+//
+// @securityDefinitions.apikey	ApiKeyAuth
+// @in							header
+// @name						Authorization
+// @description
+//
+// @tag.name				posts
+// @tag.description		Operations related to posts management
+//
+// @tag.name				users
+// @tag.description		Operations related to user management and social features
+//
+// @tag.name				health
+// @tag.description		Health check and system status endpoints
+//
+// @schemes				http https
+// @produce				json
+// @consumes				json
+//
+// @x-extension-openapi	{"info":{"x-logo":{"url":"https://example.com/logo.png"}}}
 func main() {
 
 	logger := slog.New(formatLog.NewFormattedLogHandler(os.Stdout, slog.LevelInfo))
@@ -39,6 +75,7 @@ func main() {
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
 		},
+		apiUrl: env.GetString("API_URL", "localhost:8000"),
 	}
 
 	db, err := db.New(
@@ -72,6 +109,11 @@ func main() {
 // on receiving termination signals (SIGINT, SIGTERM). This ensures ongoing requests
 // are completed before server termination, preventing data loss or corruption.
 func (app *application) runWithGracefulShutdown(handler http.Handler) error {
+	//Docs
+	docs.SwaggerInfo.Version = "1.0"
+	docs.SwaggerInfo.Host = app.config.apiUrl
+	docs.SwaggerInfo.BasePath = ""
+
 	// Configure HTTP server with production-ready timeouts
 	srv := &http.Server{
 		Addr:         app.config.addr,

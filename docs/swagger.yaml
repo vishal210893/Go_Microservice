@@ -1,0 +1,577 @@
+basePath: /v1
+definitions:
+  main.CreateCommentPayload:
+    description: Request payload for creating a new comment
+    properties:
+      content:
+        description: "Comment content\n\t@example\t\"This is a great post!\""
+        example: This is a great post!
+        maxLength: 500
+        minLength: 1
+        type: string
+      likes:
+        description: "No. of likes\n\t@example\t5"
+        type: integer
+      user_id:
+        description: "ID of the user creating the comment\n\t@example\t1"
+        example: 1
+        type: integer
+    required:
+    - content
+    - user_id
+    type: object
+  main.CreatePostPayload:
+    properties:
+      content:
+        maxLength: 100
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        maxLength: 100
+        minLength: 3
+        type: string
+      userId:
+        type: integer
+    required:
+    - content
+    - title
+    - userId
+    type: object
+  main.HealthResponse:
+    description: Health status information for the microservice
+    properties:
+      message:
+        description: "Descriptive message about the service state\n\t@example\t\"Service
+          is operational\""
+        example: Service is operational
+        type: string
+      status:
+        description: "Current operational status of the service\n\t@example\t\"healthy\""
+        example: healthy
+        type: string
+      timestamp:
+        description: "UTC timestamp when the health check was performed\n\t@example\t\"2024-01-15T10:30:00.123Z\""
+        example: "2024-01-15T10:30:00.123Z"
+        type: string
+      version:
+        description: "Service version information (optional)\n\t@example\t\"1.0.0\""
+        example: 1.0.0
+        type: string
+    type: object
+  repo.Comment:
+    description: User comment on a specific post
+    properties:
+      content:
+        description: "Comment content\n\t@example\t\"Great post! Thanks for sharing.\""
+        example: Great post! Thanks for sharing.
+        type: string
+      created_at:
+        description: "Timestamp when the comment was created\n\t@example\t2024-01-15T11:30:00Z"
+        example: "2024-01-15T11:30:00Z"
+        type: string
+      id:
+        description: "Comment's unique identifier\n\t@example\t1"
+        example: 1
+        type: integer
+      post_id:
+        description: "ID of the post this comment belongs to\n\t@example\t1"
+        example: 1
+        type: integer
+      user:
+        $ref: '#/definitions/repo.User'
+      user_id:
+        description: "ID of the user who created the comment\n\t@example\t2"
+        example: 2
+        type: integer
+    type: object
+  repo.Post:
+    description: Post content with metadata and associated comments
+    properties:
+      comments:
+        description: List of comments on this post
+        items:
+          $ref: '#/definitions/repo.Comment'
+        type: array
+      content:
+        description: "Post content/body\n\t@example\t\"This is the content of my first
+          blog post...\""
+        example: This is the content of my first blog post...
+        type: string
+      created_at:
+        description: "Timestamp when the post was created\n\t@example\t2024-01-15T10:30:00Z"
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      id:
+        description: "Post's unique identifier\n\t@example\t1"
+        example: 1
+        type: integer
+      tags:
+        description: "Associated tags for categorization\n\t@example\t[\"golang\",\"programming\",\"tutorial\"]"
+        example:
+        - golang
+        - programming
+        - tutorial
+        items:
+          type: string
+        type: array
+      title:
+        description: "Post title\n\t@example\t\"My First Blog Post\""
+        example: My First Blog Post
+        type: string
+      updated_at:
+        description: "Timestamp when the post was last updated\n\t@example\t2024-01-15T14:30:00Z"
+        example: "2024-01-15T14:30:00Z"
+        type: string
+      user:
+        $ref: '#/definitions/repo.User'
+      user_id:
+        description: "ID of the user who created the post\n\t@example\t1"
+        example: 1
+        type: integer
+    type: object
+  repo.User:
+    description: User account information
+    properties:
+      created_at:
+        description: "Timestamp when the user account was created\n\t@example\t2024-01-15T10:30:00Z"
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      email:
+        description: "User's email address\n\t@example\tjohn.doe@example.com"
+        example: john.doe@example.com
+        type: string
+      id:
+        description: "User's unique identifier\n\t@example\t1"
+        example: 1
+        type: integer
+      username:
+        description: "User's unique username\n\t@example\tjohn_doe"
+        example: john_doe
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: |-
+    A production-ready Go microservice with posts, users, and social features
+    This API provides endpoints for managing posts, users, comments, and social interactions
+    including user following/unfollowing and personalized feeds.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Go Microservice API
+  version: "1.0"
+paths:
+  /v1/health:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Returns comprehensive health information about the microservice including operational status,
+        system timestamp, and version details. This endpoint is used for monitoring and load balancer health checks.
+        Always returns 200 OK when the service is running and can process requests.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy and operational
+          schema:
+            $ref: '#/definitions/main.HealthResponse'
+        "500":
+          description: Internal server error - service may be unhealthy
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get service health status
+      tags:
+      - health
+      x-order: 1
+  /v1/posts:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Create a new post with title, content, tags, and associate it with a user
+        All fields are validated before creation. Title must be between 3-100 characters.
+      parameters:
+      - description: Post creation payload
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreatePostPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Post created successfully
+          schema:
+            $ref: '#/definitions/repo.Post'
+        "400":
+          description: Invalid request payload or validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Validation failed for post data
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new post
+      tags:
+      - posts
+  /v1/posts/{postID}:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Permanently delete a post and all associated data including comments
+        This action cannot be undone. Only the post owner can delete their posts.
+      parameters:
+      - description: Post ID to delete
+        format: int64
+        in: path
+        name: postID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Post deleted successfully (no content returned)
+        "400":
+          description: Invalid post ID format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a post
+      tags:
+      - posts
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieve detailed information about a specific post including all associated comments
+        Returns the complete post object with nested comments and user information
+      parameters:
+      - description: Post ID to retrieve
+        format: int64
+        in: path
+        name: postID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post details with comments retrieved successfully
+          schema:
+            $ref: '#/definitions/repo.Post'
+        "400":
+          description: Invalid post ID format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get post by ID
+      tags:
+      - posts
+  /v1/posts/{postID}/comments:
+    post:
+      consumes:
+      - application/json
+      description: Add a new comment to an existing post with the provided content
+        and user information
+      parameters:
+      - description: Post ID to comment on
+        format: int64
+        in: path
+        name: postID
+        required: true
+        type: integer
+      - description: Comment creation payload
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/main.CreateCommentPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Comment created successfully
+          schema:
+            $ref: '#/definitions/repo.Comment'
+        "400":
+          description: Invalid request payload or post ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Validation failed for comment data
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a comment on a post
+      tags:
+      - posts
+  /v1/users/{userID}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve detailed information about a specific user including their
+        profile data
+      parameters:
+      - description: User ID to retrieve
+        format: int64
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User details retrieved successfully
+          schema:
+            $ref: '#/definitions/repo.User'
+        "400":
+          description: Invalid user ID format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get user by ID
+      tags:
+      - users
+  /v1/users/{userID}/follow:
+    put:
+      consumes:
+      - application/json
+      description: Create a following relationship between the authenticated user
+        and the target user
+      parameters:
+      - description: ID of the user to follow
+        format: int64
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully followed user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "201":
+          description: Following relationship created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid user ID or cannot follow yourself
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Already following this user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BasicAuth: []
+      summary: Follow a user
+      tags:
+      - users
+  /v1/users/{userID}/unfollow:
+    put:
+      consumes:
+      - application/json
+      description: Remove the following relationship between the authenticated user
+        and the target user
+      parameters:
+      - description: ID of the user to unfollow
+        format: int64
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully unfollowed user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "204":
+          description: Following relationship removed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid user ID or cannot unfollow yourself
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found or not following
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BasicAuth: []
+      summary: Unfollow a user
+      tags:
+      - users
+  /v1/users/feed:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieve a chronological feed of posts from users that the authenticated user follows
+        Returns posts ordered by creation date (newest first) with pagination support
+      parameters:
+      - description: 'Number of posts to retrieve (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of posts to skip for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      - description: ISO 8601 timestamp to get posts created after this time
+        in: query
+        name: since
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Feed with pagination metadata
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Authentication required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BasicAuth: []
+      summary: Get user's personalized feed
+      tags:
+      - users
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+    x-extension-openapi: '{"info":{"x-logo":{"url":"https://example.com/logo.png"}}}'
+swagger: "2.0"
