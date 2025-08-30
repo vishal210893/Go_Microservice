@@ -1,9 +1,12 @@
 package main
 
 import (
+	"Go-Microservice/internal/mailer"
 	"Go-Microservice/internal/repo"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"net/http"
 )
@@ -64,10 +67,10 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 
 	err := app.repo.Users.CreateAndInvite(ctx, user, hashToken, app.config.invitationExpTime)
 	if err != nil {
-		switch err {
-		case repo.ErrDuplicateEmail:
+		switch {
+		case errors.Is(err, repo.ErrDuplicateEmail):
 			app.badRequestResponse(w, r, err)
-		case repo.ErrDuplicateUsername:
+		case errors.Is(err, repo.ErrDuplicateUsername):
 			app.badRequestResponse(w, r, err)
 		default:
 			app.internalServerError(w, r, err)
@@ -79,32 +82,34 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		User:  user,
 		Token: plainToken,
 	}
-	//activationURL := fmt.Sprintf("%s/confirm/%s", app.config.frontendURL, plainToken)
-	//
-	//isProdEnv := app.config.env == "production"
-	//vars := struct {
-	//	Username      string
-	//	ActivationURL string
-	//}{
-	//	Username:      user.Username,
-	//	ActivationURL: activationURL,
-	//}
-	//
-	//// send mail
-	//status, err := app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
-	//if err != nil {
-	//	app.logger.Errorw("error sending welcome email", "error", err)
-	//
-	//	// rollback user creation if email fails (SAGA pattern)
-	//	if err := app.repo.Users.Delete(ctx, user.ID); err != nil {
-	//		app.logger.Errorw("error deleting user", "error", err)
-	//	}
-	//
-	//	app.internalServerError(w, r, err)
-	//	return
-	//}
 
-	//app.logger.Info("Email sent", "status code", status)
+	activationURL := fmt.Sprintf("http://localhost:8000/v1/users/activate/%s", plainToken)
+
+	isProdEnv := app.config.env == "development"
+
+	vars := struct {
+		Username      string
+		ActivationURL string
+	}{
+		Username:      user.Username,
+		ActivationURL: activationURL,
+	}
+
+	// send mail
+	status, err := app.mailer.Send(mailer.UserWelcomeTemplate, user.Username, user.Email, vars, !isProdEnv)
+	if err != nil {
+		app.logger.Error("error sending welcome email", "error", err)
+
+		// rollback user creation if email fails (SAGA pattern)
+		if err := app.repo.Users.Delete(ctx, user.ID); err != nil {
+			app.logger.Error("error deleting user", "error", err)
+		}
+
+		app.internalServerError(w, r, err)
+		return
+	}
+
+	app.logger.Info("Email sent", "status code", status)
 
 	if err := app.jsonResponse(w, http.StatusCreated, userWithToken); err != nil {
 		app.internalServerError(w, r, err)

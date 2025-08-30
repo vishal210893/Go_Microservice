@@ -5,6 +5,7 @@ import (
 	"Go-Microservice/internal/db"
 	"Go-Microservice/internal/env"
 	formatLog "Go-Microservice/internal/log"
+	"Go-Microservice/internal/mailer"
 	"Go-Microservice/internal/repo"
 	"context"
 	"log"
@@ -75,11 +76,19 @@ func main() {
 			maxIdleConns: env.GetInt("DB_MAX_IDLE_CONNS", 30),
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
 		},
-		apiUrl: env.GetString("API_URL", "localhost:8000"),
+		apiUrl:            env.GetString("API_URL", "localhost:8000"),
 		invitationExpTime: env.GetDuration("INVITATION_EXP_TIME", time.Hour*5),
+		mailConfig: mailConfig{
+			sendGrid: sendGridConfig{
+				apiKey: env.GetString("SENDGRID_API_KEY", ""),
+			},
+			fromEmail: env.GetString("FROM_EMAIL", "vishal21kr@gmail.com"),
+		},
+		frontendURL: env.GetString("FRONTEND_URL", "http://localhost:5173"),
+		env:         env.GetString("ENV", "development"),
 	}
 
-	db, err := db.New(
+	dbConn, err := db.New(
 		config.db.addr,
 		config.db.maxOpenConns,
 		config.db.maxIdleConns,
@@ -88,15 +97,18 @@ func main() {
 		logger.Error("Failed to connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer dbConn.Close()
 	log.Println("Connected to database!")
 
-	postgresRepo, _ := repo.NewPostgresRepo(db)
+	postgresRepo, _ := repo.NewPostgresRepo(dbConn)
+
+	sendgrid := mailer.NewSendGrid(config.mailConfig.sendGrid.apiKey, config.mailConfig.fromEmail)
 
 	app := &application{
 		config: config,
 		logger: logger,
 		repo:   *postgresRepo,
+		mailer: sendgrid,
 	}
 
 	router := app.mount()

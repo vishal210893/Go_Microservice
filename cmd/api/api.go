@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Go-Microservice/internal/mailer"
 	"Go-Microservice/internal/repo"
 	"fmt"
 	"log/slog"
@@ -28,6 +29,19 @@ type config struct {
 	db                dbConfig
 	apiUrl            string
 	invitationExpTime time.Duration
+	mailConfig        mailConfig
+	frontendURL       string
+	env               string
+}
+
+type mailConfig struct {
+	sendGrid sendGridConfig
+	fromEmail string
+	exp time.Duration
+}
+
+type sendGridConfig struct {
+	apiKey string
 }
 
 // application holds the dependencies for HTTP handlers, helpers, and middleware.
@@ -36,6 +50,7 @@ type application struct {
 	config config
 	logger *slog.Logger
 	repo   repo.Repository
+	mailer mailer.Client
 }
 
 // mount configures and returns the HTTP router with all middleware and routes.

@@ -10,8 +10,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type post string
-
 const postCtx = "post"
 
 type CreatePostPayload struct {
