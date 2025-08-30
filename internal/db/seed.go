@@ -5,6 +5,7 @@ package db
 import (
 	"Go-Microservice/internal/repo"
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
@@ -95,19 +96,23 @@ func newSeedData() *seedData {
 //   - repository: Repository interface for database operations
 //
 // If any error occurs during seeding, the function logs the error and returns early.
-func Seed(repository repo.Repository) {
+func Seed(repository repo.Repository, db *sql.DB) {
 	ctx := context.Background()
 	data := newSeedData()
 
 	// Generate and create users
 	users := data.generateUsers(100)
+
+	tx, _ := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	for _, user := range users {
-		if err := repository.Users.Create(ctx, user); err != nil {
+		if err := repository.Users.Create(ctx, tx, user); err != nil {
+			_ = tx.Rollback()
 			log.Printf("Error creating user %s: %v", user.Username, err)
 			return
 		}
 	}
 	log.Printf("Successfully created %d users", len(users))
+	tx.Commit()
 
 	// Generate and create posts
 	posts := data.generatePosts(200, users)

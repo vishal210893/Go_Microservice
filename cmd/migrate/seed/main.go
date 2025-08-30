@@ -64,6 +64,6 @@ func main() {
 
 	// Run database seeding
 	log.Println("Starting database seeding process...")
-	db.Seed(*repository)
+	db.Seed(*repository, conn)
 	log.Println("Database seeding completed successfully")
 }

@@ -76,6 +76,7 @@ func main() {
 			maxIdleTime:  env.GetString("DB_MAX_IDLE_TIME", "15m"),
 		},
 		apiUrl: env.GetString("API_URL", "localhost:8000"),
+		invitationExpTime: env.GetDuration("INVITATION_EXP_TIME", time.Hour*5),
 	}
 
 	db, err := db.New(

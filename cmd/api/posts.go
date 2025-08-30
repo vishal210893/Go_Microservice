@@ -123,7 +123,7 @@ func (app *application) deletePostHandler(w http.ResponseWriter, r *http.Request
 
 	if err := app.repo.Posts.Delete(ctx, id); err != nil {
 		switch {
-		case errors.Is(err, repo.ErrPostNotFound):
+		case errors.Is(err, repo.ErrNotFound):
 			app.notFoundResponse(w, r, err)
 		default:
 
@@ -203,7 +203,7 @@ func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
 		post, err := app.repo.Posts.GetByID(ctx, id)
 		if err != nil {
 			switch {
-			case errors.Is(err, repo.ErrPostNotFound):
+			case errors.Is(err, repo.ErrNotFound):
 				app.notFoundResponse(w, r, err)
 			default:
 				app.internalServerError(w, r, err)

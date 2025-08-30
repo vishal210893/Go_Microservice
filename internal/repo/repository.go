@@ -31,8 +31,10 @@ type PostsRepository interface {
 }
 
 type UsersRepository interface {
-	Create(ctx context.Context, user *User) error
+	Create(ctx context.Context, tx *sql.Tx, user *User) error
 	GetByID(ctx context.Context, id int64) (*User, error)
+	CreateAndInvite(ctx context.Context, user *User, token string, invitationExp time.Duration) error
+	Activate(ctx context.Context, token string) error
 }
 
 type CommentsRepository interface {
@@ -117,4 +119,15 @@ func (r *Repository) Health(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func withTx(db *sql.DB, ctx context.Context, fn func(tx *sql.Tx) error) (err error) {
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	if err != nil {
+		return err
+	}
+	if err := fn(tx); err != nil {
+		return tx.Rollback()
+	}
+	return tx.Commit()
 }

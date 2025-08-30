@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	ErrPostNotFound    = errors.New("post not found")
-	ErrPostExists      = errors.New("post already exists")
+	ErrNotFound   = errors.New("Not found")
+	ErrPostExists = errors.New("post already exists")
 	ErrInvalidPostData = errors.New("invalid post data")
 )
 
@@ -99,7 +99,7 @@ type PostWithMetadata struct {
 //	}
 //	err := store.Create(ctx, post)
 //	if err != nil {
-//		log.Printf("Failed to create post: %v", err)
+//		log.Printf("Failed to Create post: %v", err)
 //	}
 func (postStore *PostStore) Create(ctx context.Context, post *Post) error {
 	if post == nil {
@@ -147,14 +147,14 @@ func (postStore *PostStore) Create(ctx context.Context, post *Post) error {
 
 		// Handle context errors
 		if errors.Is(err, context.DeadlineExceeded) {
-			return fmt.Errorf("create operation timed out: %w", err)
+			return fmt.Errorf("Create operation timed out: %w", err)
 		}
 
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("no rows returned from insert: %w", err)
 		}
 
-		return fmt.Errorf("failed to create post: %w", err)
+		return fmt.Errorf("failed to Create post: %w", err)
 	}
 
 	return nil
@@ -188,7 +188,7 @@ func (postStore *PostStore) GetByID(ctx context.Context, id int64) (*Post, error
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("%w: post with ID %d", ErrPostNotFound, id)
+			return nil, fmt.Errorf("%w: post with ID %d", ErrNotFound, id)
 		}
 		return nil, fmt.Errorf("failed to get post: %w", err)
 	}
@@ -228,7 +228,7 @@ func (postStore *PostStore) Update(ctx context.Context, post *Post) error {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w: post may not exist or version conflict", ErrPostNotFound)
+			return fmt.Errorf("%w: post may not exist or version conflict", ErrNotFound)
 		}
 		return fmt.Errorf("failed to update post: %w", err)
 	}
@@ -256,7 +256,7 @@ func (postStore *PostStore) Delete(ctx context.Context, id int64) error {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("%w: post with ID %d", ErrPostNotFound, id)
+		return fmt.Errorf("%w: post with ID %d", ErrNotFound, id)
 	}
 
 	return nil

@@ -24,9 +24,10 @@ type config struct {
 	// addr is the network address the server will listen on
 	addr string
 	// shutdownTimeout defines the maximum time allowed for graceful shutdown
-	shutdownTimeout time.Duration
-	db              dbConfig
-	apiUrl          string
+	shutdownTimeout   time.Duration
+	db                dbConfig
+	apiUrl            string
+	invitationExpTime time.Duration
 }
 
 // application holds the dependencies for HTTP handlers, helpers, and middleware.
@@ -72,6 +73,8 @@ func (app *application) mount() http.Handler {
 		})
 
 		r.Route("/users", func(r chi.Router) {
+			r.Put("/activate/{token}", app.activateUserHandler)
+
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.usersContextMiddleware)
 				r.Get("/", app.getUserHandler)
@@ -81,6 +84,11 @@ func (app *application) mount() http.Handler {
 			r.Group(func(r chi.Router) {
 				r.Get("/feed", app.getUserFeedHandler)
 			})
+		})
+
+		// Public routes
+		r.Route("/authentication", func(r chi.Router) {
+			r.Post("/user", app.registerUserHandler)
 		})
 	})
 
