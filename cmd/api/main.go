@@ -2,6 +2,7 @@ package main
 
 import (
 	"Go-Microservice/docs"
+	"Go-Microservice/internal/auth"
 	"Go-Microservice/internal/db"
 	"Go-Microservice/internal/env"
 	formatLog "Go-Microservice/internal/log"
@@ -86,6 +87,18 @@ func main() {
 		},
 		frontendURL: env.GetString("FRONTEND_URL", "http://localhost:5173"),
 		env:         env.GetString("ENV", "development"),
+		auth: authConfig{
+			basic: basicConfig{
+				user: env.GetString("BASIC_AUTH_USER", "admin"),
+				pass: env.GetString("BASIC_AUTH_PASS", "admin"),
+			},
+			token: tokenConfig{
+				secret: env.GetString("JWT_SECRET", "secret"),
+				exp:    env.GetDuration("JWT_EXP", time.Hour*24),
+				aud:    env.GetString("JWT_AUD", "Go Microservice"),
+				iss:    env.GetString("JWT_ISS", "Go Microservice"),
+			},
+		},
 	}
 
 	dbConn, err := db.New(
@@ -104,11 +117,14 @@ func main() {
 
 	sendgrid := mailer.NewSendGrid(config.mailConfig.sendGrid.apiKey, config.mailConfig.fromEmail)
 
+	authenticator := auth.NewJWTAuthenticator(config.auth.token.secret, config.auth.token.iss, config.auth.token.aud)
+
 	app := &application{
-		config: config,
-		logger: logger,
-		repo:   *postgresRepo,
-		mailer: sendgrid,
+		config:        config,
+		logger:        logger,
+		repo:          *postgresRepo,
+		mailer:        sendgrid,
+		authenticator: authenticator,
 	}
 
 	router := app.mount()

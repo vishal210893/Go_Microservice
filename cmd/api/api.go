@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Go-Microservice/internal/auth"
 	"Go-Microservice/internal/mailer"
 	"Go-Microservice/internal/repo"
 	"fmt"
@@ -32,12 +33,30 @@ type config struct {
 	mailConfig        mailConfig
 	frontendURL       string
 	env               string
+	auth              authConfig
+}
+
+type authConfig struct {
+	basic basicConfig
+	token tokenConfig
+}
+
+type tokenConfig struct {
+	secret string
+	exp time.Duration
+	aud string
+	iss string
+}
+
+type basicConfig struct {
+	user string
+	pass string
 }
 
 type mailConfig struct {
-	sendGrid sendGridConfig
+	sendGrid  sendGridConfig
 	fromEmail string
-	exp time.Duration
+	exp       time.Duration
 }
 
 type sendGridConfig struct {
@@ -47,10 +66,11 @@ type sendGridConfig struct {
 // application holds the dependencies for HTTP handlers, helpers, and middleware.
 // It serves as the dependency injection container for the entire application.
 type application struct {
-	config config
-	logger *slog.Logger
-	repo   repo.Repository
-	mailer mailer.Client
+	config        config
+	logger        *slog.Logger
+	repo          repo.Repository
+	mailer        mailer.Client
+	authenticator auth.Authenticator
 }
 
 // mount configures and returns the HTTP router with all middleware and routes.
@@ -70,8 +90,9 @@ func (app *application) mount() http.Handler {
 	// API versioning with grouped routes
 	r.Route("/v1", func(r chi.Router) {
 		// Health check endpoints
-		r.Get("/health", app.healthcheckHandler)
+		r.With(app.BasicAuthMiddleware()).Get("/health", app.healthcheckHandler)
 
+		// Swagger documentation endpoint
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
 		r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL(docsURL)))
 
@@ -104,6 +125,7 @@ func (app *application) mount() http.Handler {
 		// Public routes
 		r.Route("/authentication", func(r chi.Router) {
 			r.Post("/user", app.registerUserHandler)
+			r.Post("/token", app.createTokenHandler)
 		})
 	})
 

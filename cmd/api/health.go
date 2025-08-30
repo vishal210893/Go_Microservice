@@ -24,6 +24,10 @@ type HealthResponse struct {
 	// Service version information (optional)
 	//	@example	"1.0.0"
 	Version string `json:"version,omitempty" example:"1.0.0"`
+
+	// Current Env
+	// @example "dev"
+	Env string `json:"env" example:"dev"`
 }
 
 // HealthCheck returns the current health status of the service
@@ -56,6 +60,7 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 		Message:   "Service is operational",
 		Timestamp: time.Now().UTC(),
 		Version:   "1.0.0",
+		Env:       app.config.env,
 	}
 
 	w.WriteHeader(http.StatusOK)
