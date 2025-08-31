@@ -49,6 +49,10 @@ type FollowersRepository interface {
 	Unfollow(ctx context.Context, userID, followerID int64) error
 }
 
+type RoleRepository interface {
+	GetByName(ctx context.Context, slug string) (*Role, error)
+}
+
 // Repository aggregates all repository interfaces into a single structure.
 // This provides a unified access point for all data operations and simplifies
 // dependency injection in the service layer.
@@ -63,6 +67,7 @@ type Repository struct {
 	Users     UsersRepository
 	Comments  CommentsRepository
 	Followers FollowersRepository
+	Roles     RoleRepository
 }
 
 // NewRepository creates a new Repository instance with PostgreSQL implementations.
@@ -96,6 +101,7 @@ func NewPostgresRepo(db *sql.DB) (*Repository, error) {
 		Users:     &UserStore{db},
 		Comments:  &CommentRepo{db},
 		Followers: &FollowerRepo{db},
+		Roles:     &RoleRepo{db},
 	}, nil
 
 }

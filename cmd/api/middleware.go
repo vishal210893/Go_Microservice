@@ -4,6 +4,7 @@ import (
 	"Go-Microservice/internal/repo"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
@@ -52,7 +53,7 @@ func (app *application) BasicAuthMiddleware() func(http.Handler) http.Handler {
 }
 
 func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
-	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	var handlerFunc http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			app.unauthorizedErrorResponse(w, r, fmt.Errorf("authorization header is missing"))
@@ -90,7 +91,7 @@ func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 
 		ctx = context.WithValue(ctx, userCtx, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+	}
 	return handlerFunc
 }
 
@@ -119,3 +120,60 @@ func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		idParam := chi.URLParam(r, "postID")
+		id, err := strconv.ParseInt(idParam, 10, 64)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+
+		ctx := r.Context()
+
+		post, err := app.repo.Posts.GetByID(ctx, id)
+		if err != nil {
+			switch {
+			case errors.Is(err, repo.ErrNotFound):
+				app.notFoundResponse(w, r, err)
+			default:
+				app.internalServerError(w, r, err)
+			}
+			return
+		}
+
+		ctx = context.WithValue(ctx, postCtx, post)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (app *application) checkPostOwnership(requiredRole string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := getUserFromContext(r)
+		post := getPostFromCtx(r)
+
+		if post.UserID == user.ID {
+			next.ServeHTTP(w, r)
+			return
+		}
+		allowed, err := app.checkRolePrecedence(r.Context(), user, requiredRole)
+		if err != nil {
+			app.internalServerError(w, r, err)
+			return
+		}
+		if !allowed {
+			app.forbiddenResponse(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+func (app *application) checkRolePrecedence(ctx context.Context, user *repo.User, roleName string) (bool, error) {
+	role, err := app.repo.Roles.GetByName(ctx, roleName)
+	if err != nil {
+		return false, err
+	}
+
+	return user.Role.Level >= role.Level, nil
+}

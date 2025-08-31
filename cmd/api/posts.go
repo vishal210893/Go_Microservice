@@ -2,7 +2,6 @@ package main
 
 import (
 	"Go-Microservice/internal/repo"
-	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -187,33 +186,6 @@ func (app *application) updatePostHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-}
-
-func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		idParam := chi.URLParam(r, "postID")
-		id, err := strconv.ParseInt(idParam, 10, 64)
-		if err != nil {
-			app.internalServerError(w, r, err)
-			return
-		}
-
-		ctx := r.Context()
-
-		post, err := app.repo.Posts.GetByID(ctx, id)
-		if err != nil {
-			switch {
-			case errors.Is(err, repo.ErrNotFound):
-				app.notFoundResponse(w, r, err)
-			default:
-				app.internalServerError(w, r, err)
-			}
-			return
-		}
-
-		ctx = context.WithValue(ctx, postCtx, post)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
 
 func getPostFromCtx(r *http.Request) *repo.Post {

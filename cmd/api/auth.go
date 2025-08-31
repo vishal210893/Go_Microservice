@@ -18,6 +18,7 @@ type RegisterUserPayload struct {
 	Username string `json:"username" validate:"required,max=100"`
 	Email    string `json:"email" validate:"required,email,max=255"`
 	Password string `json:"password" validate:"required,min=3,max=72"`
+	RoleID   int64  `json:"role_id" validate:"required"`
 }
 
 type UserWithToken struct {
@@ -57,6 +58,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	user := &repo.User{
 		Username: payload.Username,
 		Email:    payload.Email,
+		RoleID:   payload.RoleID,
 	}
 
 	// hash the user password
