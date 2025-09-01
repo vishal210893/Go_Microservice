@@ -4,6 +4,7 @@ import (
 	"Go-Microservice/internal/auth"
 	"Go-Microservice/internal/mailer"
 	"Go-Microservice/internal/repo"
+	"Go-Microservice/internal/repo/cache"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -34,6 +35,14 @@ type config struct {
 	frontendURL       string
 	env               string
 	auth              authConfig
+	redisConfig       redisConfig
+}
+
+type redisConfig struct {
+	addr    string
+	pw      string
+	db      int
+	enabled bool
 }
 
 type authConfig struct {
@@ -71,6 +80,7 @@ type application struct {
 	repo          repo.Repository
 	mailer        mailer.Client
 	authenticator auth.Authenticator
+	cacheStorage  cache.Storage
 }
 
 // mount configures and returns the HTTP router with all middleware and routes.
@@ -114,7 +124,7 @@ func (app *application) mount() http.Handler {
 
 			r.Route("/{userID}", func(r chi.Router) {
 				r.Use(app.AuthTokenMiddleware)
-				r.Use(app.usersContextMiddleware)
+				//r.Use(app.usersContextMiddleware)
 				r.Get("/", app.getUserHandler)
 				r.Put("/follow", app.followUserHandler)
 				r.Put("/unfollow", app.unfollowUserHandler)

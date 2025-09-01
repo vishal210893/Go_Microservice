@@ -8,7 +8,9 @@ import (
 	formatLog "Go-Microservice/internal/log"
 	"Go-Microservice/internal/mailer"
 	"Go-Microservice/internal/repo"
+	"Go-Microservice/internal/repo/cache"
 	"context"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"log/slog"
 	"net"
@@ -94,10 +96,16 @@ func main() {
 			},
 			token: tokenConfig{
 				secret: env.GetString("JWT_SECRET", "secret"),
-				exp:    env.GetDuration("JWT_EXP", time.Hour*24),
+				exp: 	env.GetDuration("JWT_EXP", time.Hour*24*30),
 				aud:    env.GetString("JWT_AUD", "Go Microservice"),
 				iss:    env.GetString("JWT_ISS", "Go Microservice"),
 			},
+		},
+		redisConfig: redisConfig{
+			addr:    env.GetString("REDIS_ADDR", "localhost:6379"),
+			pw:      env.GetString("REDIS_PW", ""),
+			db:      env.GetInt("REDIS_DB", 0),
+			enabled: env.GetBool("REDIS_ENABLED", true),
 		},
 	}
 
@@ -119,12 +127,23 @@ func main() {
 
 	authenticator := auth.NewJWTAuthenticator(config.auth.token.secret, config.auth.token.iss, config.auth.token.aud)
 
+	var rdb *redis.Client
+	if config.redisConfig.enabled {
+		rdb, err = cache.NewRedisClient(config.redisConfig.addr, config.redisConfig.pw, config.redisConfig.db)
+		if err != nil {
+			logger.Error("Failed to connect to redis", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("Connected to redis!")
+	}
+
 	app := &application{
 		config:        config,
 		logger:        logger,
 		repo:          *postgresRepo,
 		mailer:        sendgrid,
 		authenticator: authenticator,
+		cacheStorage: cache.NewRedisStorage(rdb),
 	}
 
 	router := app.mount()

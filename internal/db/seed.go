@@ -152,9 +152,7 @@ func (s *seedData) generateUsers(num int) []*repo.User {
 		users[i] = &repo.User{
 			Username: fmt.Sprintf("%s%d", baseUsername, i),
 			Email:    fmt.Sprintf("%s%d@example.com", baseUsername, i),
-			Role: repo.Role{
-				Name: "user",
-			},
+			RoleID: 1,
 		}
 	}
 
