@@ -64,7 +64,7 @@ func writeJSONError(w http.ResponseWriter, status int, message string) error {
 	type envelope struct {
 		Error string `json:"error"`
 	}
-	log.Printf(message)
+	log.Printf("error: %s", message)
 	return writeJSON(w, status, &envelope{Error: message})
 }
 
