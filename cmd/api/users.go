@@ -32,7 +32,7 @@ func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := app.repo.Users.GetByID(r.Context(), userID)
+	user, err := app.getUser(r.Context(), userID)
 	if err != nil {
 		switch err {
 		case repo.ErrNotFound:
