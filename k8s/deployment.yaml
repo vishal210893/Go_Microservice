@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-microservice
+  namespace: default
+  labels:
+    app: go-microservice
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: go-microservice
+  template:
+    metadata:
+      labels:
+        app: go-microservice
+    spec:
+      containers:
+      - name: go-microservice
+        image: vishal210893/go-microservice:1
+        ports:
+        - containerPort: 8000
+          name: http
+        envFrom:
+        - configMapRef:
+            name: go-microservice-config
+        - secretRef:
+            name: go-microservice-secret
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8000
+            httpHeaders:
+              - name: Authorization
+                value: "Basic YWRtaW46YWRtaW4="
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8000
+            httpHeaders:
+              - name: Authorization
+                value: "Basic YWRtaW46YWRtaW4="
+          initialDelaySeconds: 5
+          periodSeconds: 5
