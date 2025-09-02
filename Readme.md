@@ -77,9 +77,9 @@ docker run -d \
 --name go-microservice-container \
 -p 8080:8000 \
 -e ADDR=:8000 \
--e SENDGRID_API_KEY=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 \
+-e SENDGRID_API_KEY={key} \
 -e REDIS_ADDR=redis-10702.c264.ap-south-1-1.ec2.redns.redis-cloud.com:10702 \
--e REDIS_PW=9GfZuJI3RMooIJ0TFNc3fir9obuNZ7CU \
+-e REDIS_PW={pwd} \
 vishal210893/go-microservice:1
 
 Access the Application
