@@ -95,30 +95,31 @@ func (app *application) AuthTokenMiddleware(next http.Handler) http.Handler {
 	return handlerFunc
 }
 
-//func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
-//	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//		userID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
-//		if err != nil {
-//			app.badRequestResponse(w, r, err)
-//			return
-//		}
-//
-//		user, err := app.repo.Users.GetByID(r.Context(), userID)
-//		if err != nil {
-//			switch err {
-//			case repo.ErrNotFound:
-//				app.notFoundResponse(w, r, err)
-//				return
-//			default:
-//				app.internalServerError(w, r, err)
-//				return
-//			}
-//		}
-//
-//		ctx := context.WithValue(r.Context(), userCtx, user)
-//		next.ServeHTTP(w, r.WithContext(ctx))
-//	})
-//}
+//lint:ignore U1000 middleware function may be used conditionally
+func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID, err := strconv.ParseInt(chi.URLParam(r, "userID"), 10, 64)
+		if err != nil {
+			app.badRequestResponse(w, r, err)
+			return
+		}
+
+		user, err := app.repo.Users.GetByID(r.Context(), userID)
+		if err != nil {
+			switch err {
+			case repo.ErrNotFound:
+				app.notFoundResponse(w, r, err)
+				return
+			default:
+				app.internalServerError(w, r, err)
+				return
+			}
+		}
+
+		ctx := context.WithValue(r.Context(), userCtx, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
 func (app *application) postsContextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
