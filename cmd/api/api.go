@@ -70,7 +70,6 @@ type basicConfig struct {
 type mailConfig struct {
 	sendGrid  sendGridConfig
 	fromEmail string
-	exp       time.Duration
 }
 
 type sendGridConfig struct {

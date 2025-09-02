@@ -108,9 +108,7 @@ func (h *SpringBootHandler) Handle(_ context.Context, r slog.Record) error {
 		}
 
 		// Remove .go extension for cleaner output
-		if strings.HasSuffix(relativeFileName, ".go") {
-			relativeFileName = relativeFileName[:len(relativeFileName)-3]
-		}
+		relativeFileName = strings.TrimSuffix(relativeFileName, ".go")
 	}
 
 	var logLine strings.Builder
