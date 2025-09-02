@@ -3,6 +3,7 @@ package main
 import (
 	"Go-Microservice/internal/auth"
 	"Go-Microservice/internal/mailer"
+	"Go-Microservice/internal/ratelimiter"
 	"Go-Microservice/internal/repo"
 	"Go-Microservice/internal/repo/cache"
 	"fmt"
@@ -36,6 +37,7 @@ type config struct {
 	env               string
 	auth              authConfig
 	redisConfig       redisConfig
+	rateLimiterConfig ratelimiter.Config
 }
 
 type redisConfig struct {
@@ -81,6 +83,7 @@ type application struct {
 	mailer        mailer.Client
 	authenticator auth.Authenticator
 	cacheStorage  cache.Storage
+	rateLimiter   ratelimiter.Limiter
 }
 
 // mount configures and returns the HTTP router with all middleware and routes.
@@ -94,6 +97,7 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.RealIP)    // Sets RemoteAddr to real client IP
 	r.Use(middleware.Logger)    // Logs request details
 	r.Use(middleware.Recoverer) // Recovers from panics and returns 500
+	r.Use(app.rateLimitMiddleware) // Rate limiter
 
 	r.Use(middleware.Timeout(60 * time.Second))
 

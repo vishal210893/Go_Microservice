@@ -7,6 +7,7 @@ import (
 	"Go-Microservice/internal/env"
 	formatLog "Go-Microservice/internal/log"
 	"Go-Microservice/internal/mailer"
+	"Go-Microservice/internal/ratelimiter"
 	"Go-Microservice/internal/repo"
 	"Go-Microservice/internal/repo/cache"
 	"context"
@@ -96,7 +97,7 @@ func main() {
 			},
 			token: tokenConfig{
 				secret: env.GetString("JWT_SECRET", "secret"),
-				exp: 	env.GetDuration("JWT_EXP", time.Hour*24*30),
+				exp: env.GetDuration("JWT_EXP", time.Hour*24*30),
 				aud:    env.GetString("JWT_AUD", "Go Microservice"),
 				iss:    env.GetString("JWT_ISS", "Go Microservice"),
 			},
@@ -106,6 +107,11 @@ func main() {
 			pw:      env.GetString("REDIS_PW", ""),
 			db:      env.GetInt("REDIS_DB", 0),
 			enabled: env.GetBool("REDIS_ENABLED", true),
+		},
+		rateLimiterConfig: ratelimiter.Config{
+			RequestsPerTimeFrame: env.GetInt("RATE_LIMITER_REQUESTS_PER_TIME_FRAME", 5),
+			TimeFrame:            env.GetDuration("RATE_LIMITER_TIME_FRAME", time.Minute*5),
+			Enabled:              env.GetBool("RATE_LIMITER_ENABLED", true),
 		},
 	}
 
@@ -137,6 +143,13 @@ func main() {
 		logger.Info("Connected to redis!")
 	}
 
+	// Rate limiter
+	rateLimiter := ratelimiter.NewRedisFixedWindowLimiter(
+		rdb,
+		config.rateLimiterConfig.RequestsPerTimeFrame,
+		config.rateLimiterConfig.TimeFrame,
+	)
+
 	app := &application{
 		config:        config,
 		logger:        logger,
@@ -144,6 +157,7 @@ func main() {
 		mailer:        sendgrid,
 		authenticator: authenticator,
 		cacheStorage: cache.NewRedisStorage(rdb),
+		rateLimiter: rateLimiter,
 	}
 
 	router := app.mount()
