@@ -11,6 +11,7 @@ import (
 	"Go-Microservice/internal/repo"
 	"Go-Microservice/internal/repo/cache"
 	"context"
+	"expvar"
 	"github.com/redis/go-redis/v9"
 	"log"
 	"log/slog"
@@ -18,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 )
@@ -103,8 +105,8 @@ func main() {
 			},
 		},
 		redisConfig: redisConfig{
-			addr:    env.GetString("REDIS_ADDR", "localhost:6379"),
-			pw:      env.GetString("REDIS_PW", ""),
+			addr:    env.GetString("REDIS_ADDR", "redis-10702.c264.ap-south-1-1.ec2.redns.redis-cloud.com:10702"),
+			pw:      env.GetString("REDIS_PW", "9GfZuJI3RMooIJ0TFNc3fir9obuNZ7CU"),
 			db:      env.GetInt("REDIS_DB", 0),
 			enabled: env.GetBool("REDIS_ENABLED", true),
 		},
@@ -159,6 +161,14 @@ func main() {
 		cacheStorage: cache.NewRedisStorage(rdb),
 		rateLimiter: rateLimiter,
 	}
+
+	expvar.NewString("version").Set("1.0.0")
+	expvar.Publish("database", expvar.Func(func() any {
+		return dbConn.Stats()
+	}))
+	expvar.Publish("goroutine", expvar.Func(func() any {
+		return runtime.NumGoroutine()
+	}))
 
 	router := app.mount()
 	if err := app.runWithGracefulShutdown(router); err != nil {

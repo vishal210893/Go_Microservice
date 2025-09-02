@@ -2,11 +2,14 @@ package main
 
 import (
 	"Go-Microservice/internal/auth"
+	"Go-Microservice/internal/env"
 	"Go-Microservice/internal/mailer"
 	"Go-Microservice/internal/ratelimiter"
 	"Go-Microservice/internal/repo"
 	"Go-Microservice/internal/repo/cache"
+	"expvar"
 	"fmt"
+	"github.com/go-chi/cors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -93,11 +96,19 @@ func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
 
 	// Production-ready middleware stack
-	r.Use(middleware.RequestID) // Adds unique request ID for tracing
-	r.Use(middleware.RealIP)    // Sets RemoteAddr to real client IP
-	r.Use(middleware.Logger)    // Logs request details
-	r.Use(middleware.Recoverer) // Recovers from panics and returns 500
+	r.Use(middleware.RequestID)    // Adds unique request ID for tracing
+	r.Use(middleware.RealIP)       // Sets RemoteAddr to real client IP
+	r.Use(middleware.Logger)       // Logs request details
+	r.Use(middleware.Recoverer)    // Recovers from panics and returns 500
 	r.Use(app.rateLimitMiddleware) // Rate limiter
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{env.GetString("CORS_ALLOWED_ORIGIN", "*")},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
 
 	r.Use(middleware.Timeout(60 * time.Second))
 
@@ -105,6 +116,7 @@ func (app *application) mount() http.Handler {
 	r.Route("/v1", func(r chi.Router) {
 		// Health check endpoints
 		r.With(app.BasicAuthMiddleware()).Get("/health", app.healthcheckHandler)
+		r.With(app.BasicAuthMiddleware()).Get("/debug/vars", expvar.Handler().ServeHTTP)
 
 		// Swagger documentation endpoint
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", app.config.addr)
